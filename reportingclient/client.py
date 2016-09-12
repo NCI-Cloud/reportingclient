@@ -58,8 +58,7 @@ class ReportingClient(object):
 
     def fetch(self, report, **params):
         """
-        Fetch specified report from reporting-api endpoint, optionally passing given
-        token as X-Auth-Token header.
+        Fetch the named report, optionally passing the given parameters to it.
         """
         if self.debug:
             print 'Fetching "{}"...'.format(report)
