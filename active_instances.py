@@ -1,4 +1,5 @@
-#!/usr/bin/env python3
+#!/usr/bin/python
+
 import json
 import csv
 import sys
@@ -32,7 +33,7 @@ def fetch(report, endpoint, token=None, cache=False):
         try:
             with open(path, 'r') as f:
                 return json.loads(f.read())
-        except FileNotFoundError:
+        except IOError:
             data = query_endpoint()
             with open(path, 'w') as f:
                 f.write(json.dumps(data))
@@ -62,18 +63,17 @@ if __name__ == '__main__':
         bit of error handling to make users' lives easier.
         """
         if args.debug:
-            print('Fetching "{}"...'.format(report))
+            print 'Fetching "{}"...'.format(report)
         try:
             data = fetch(report, args.endpoint, token=args.token, cache=args.cache)
             if args.debug:
-                print('Fetched "{}".'.format(report))
+                print 'Fetched "{}".'.format(report)
             return data
         except requests.exceptions.HTTPError as ex:
-            print(ex, file=sys.stderr)
             if ex.response.status_code == 401 and not args.token:
                 # it's easy to forget to set OS_TOKEN
-                print('Hint: maybe you need to set OS_TOKEN.', file=sys.stderr)
-            sys.exit(1)
+                print >> sys.stderr, 'Hint: maybe you need to set OS_TOKEN.'
+            raise
 
     # grab all the required data
     hypervisor = fetch_w('hypervisor')
@@ -84,7 +84,7 @@ if __name__ == '__main__':
     # (since that's what we'll be using to determine AZ for each instance)
     for h in hypervisor:
         if not h['availability_zone']:
-            print('Error: no availability_zone for hypervisor {}'.format(h['id']), file=sys.stderr)
+            print >> sys.stderr, 'Error: no availability_zone for hypervisor {}'.format(h['id'])
             sys.exit(1)
     if args.debug:
         print('Checked hypervisor AZ values.')
@@ -96,8 +96,8 @@ if __name__ == '__main__':
     for h in hypervisor:
         short_name = h['hostname'].split('.')[0]
         if short_name in hyp_short:
-            print('Warning: duplicate short hypervisor names {} ({} and {}).'.format(
-                short_name, hyp_short[short_name]['id'], h['id']), file=sys.stderr)
+            print >> sys.stderr, 'Warning: duplicate short hypervisor names {} ({} and {}).'.format(
+                short_name, hyp_short[short_name]['id'], h['id'])
             if h['last_seen'] < hyp_short[short_name]['last_seen']:
                 # only care about the most recently seen hypervisor
                 continue
@@ -109,20 +109,20 @@ if __name__ == '__main__':
     instance_by_id = {}  # maps instance id to instance object
     for i in instance:
         if i['hypervisor'] is None:
-            print('Warning: instance {} has no hypervisor; it will be ignored.'.format(i['id']), file=sys.stderr)
+            print >> sys.stderr, 'Warning: instance {} has no hypervisor; it will be ignored.'.format(i['id'])
             continue
         short_name = i['hypervisor'].split('.')[0]
         if short_name not in hyp_short:
-            print('Error: could not determine hypervisor for instance {}'.format(i['id']), file=sys.stderr)
+            print >> sys.stderr, 'Error: could not determine hypervisor for instance {}'.format(i['id'])
             sys.exit(1)
         if i['project_id'] not in project_by_id:
-            print('Warning: instance {} has invalid project_id {}; it will be ignored.'.format(i['id'], i['project_id']), file=sys.stderr)
+            print >> sys.stderr, 'Warning: instance {} has invalid project_id {}; it will be ignored.'.format(i['id'], i['project_id'])
             continue
 
         instance_hypervisor[i['id']] = hyp_short[short_name]
         instance_by_id[i['id']] = i
     if args.debug:
-        print('Checked instance hypervisor values.')
+        print 'Checked instance hypervisor values.'
 
     # at this point, sanity checks have been done on all the data;
     # now join data, decorating instance objects with additional fields
