@@ -61,16 +61,9 @@ class ReportingClient(object):
         Fetch specified report from reporting-api endpoint, optionally passing given
         token as X-Auth-Token header.
         """
-        return self._request(self.get_report_url(report), **params)
-
-    def fetch_w(self, report, **params):
-        """
-        Wrapper for `fetch`, incorporating commandline arguments and a little
-        bit of error handling to make users' lives easier.
-        """
         if self.debug:
             print 'Fetching "{}"...'.format(report)
-        data = self.fetch(report, **params)
+        data = self._request(self.get_report_url(report), **params)
         if self.debug:
             print 'Fetched "{}".'.format(report)
         return data

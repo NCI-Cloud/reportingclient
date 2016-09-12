@@ -28,9 +28,9 @@ def get_arg_or_env_var(args, name):
 
 def active_instances_csv(client, args):
     # grab all the required data
-    hypervisor = client.fetch_w('hypervisor')
-    instance = client.fetch_w('instance', active=1)
-    project = client.fetch_w('project')
+    hypervisor = client.fetch('hypervisor')
+    instance = client.fetch('instance', active=1)
+    project = client.fetch('project')
 
     # check that every hypervisor has availability_zone defined
     # (since that's what we'll be using to determine AZ for each instance)
