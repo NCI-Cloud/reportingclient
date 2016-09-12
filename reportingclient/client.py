@@ -55,33 +55,13 @@ class ReportingClient(object):
             if report['name'] == report_name:
                 return report['links']['self']
         raise ValueError("No report '" + report_name + "' available")
-            
+
     def fetch(self, report, **params):
         """
         Fetch specified report from reporting-api endpoint, optionally passing given
         token as X-Auth-Token header.
-    
-        If `cache` is a truthy value, then instead of talking to the endpoint,
-        the data will be read from the file "./{report}.json". If that file does
-        not exist, it will be created and filled with data retrieved normally.
-        This is only to speed up development, avoiding the need to query endpoint
-        repeatedly when having live data is not important.
         """
-        def query_endpoint():
-            return self._request(self.get_report_url(report), **params)
-    
-        if self.cache:
-            path = './{report}.json'.format(report=report)
-            try:
-                with open(path, 'r') as f:
-                    return json.loads(f.read())
-            except IOError:
-                data = query_endpoint()
-                with open(path, 'w') as f:
-                    f.write(json.dumps(data))
-                return data
-    
-        return query_endpoint()
+        return self._request(self.get_report_url(report), **params)
 
     def fetch_w(self, report, **params):
         """
