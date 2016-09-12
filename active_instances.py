@@ -5,7 +5,25 @@ import sys
 import os
 import argparse
 from reportingclient.client import ReportingClient
+from keystoneclient import client as keystone_client
 
+
+def get_arg_or_env_var(args, name):
+    name = 'os-' + name
+    try:
+        name_with_hyphens = name.replace('_', '-').lower()
+        value = getattr(args, name_with_hyphens)
+        args.pop(name_with_hyphens, None)
+    except AttributeError:
+        # Not supplied in a command-line argument
+        name_with_underscores = name.replace('-', '_').upper()
+        try:
+            value = os.environ[name_with_underscores]
+            del os.environ[name_with_underscores]
+        except KeyError:
+            # Not supplied in environment either
+            value = None
+    return value
 
 
 if __name__ == '__main__':
@@ -14,15 +32,36 @@ if __name__ == '__main__':
     )
     parser.add_argument('--endpoint', required=True, help='reporting-api endpoint')
     parser.add_argument('--output', required=True, help='output path')
-    parser.add_argument('--token', default=None, help='auth token for reporting-api')
+    parser.add_argument('--token', default=argparse.SUPPRESS, help='auth token for reporting-api')
     parser.add_argument('--cache', default=False, action='store_true', help='cache results (for development)')
     parser.add_argument('--debug', default=False, action='store_true', help='enable debug output (for development)')
+    parser.add_argument('--os-username', default=argparse.SUPPRESS, help='Username')
+    parser.add_argument('--os-password', default=argparse.SUPPRESS, help="User's password")
+    parser.add_argument('--os-auth-url', default=argparse.SUPPRESS, help='Authentication URL')
+    parser.add_argument('--os-project-name', default=argparse.SUPPRESS, help='Project name to scope to')
+    parser.add_argument('--os-tenant-name', default=argparse.SUPPRESS, help='Project name to scope to')
     args = parser.parse_args()
+
+    args.token = get_arg_or_env_var(args, 'token')
+
     if args.token is None:
-        try:
-            args.token = os.environ['OS_TOKEN']
-        except KeyError:
-            pass  # hope that reporting-api endpoint does not require token
+        # Attempt to obtain authentication credentials
+        username = get_arg_or_env_var(args, 'username')
+        password = get_arg_or_env_var(args, 'password')
+        project_name = get_arg_or_env_var(args, 'project_name')
+        if not project_name:
+            project_name = get_arg_or_env_var(args, 'tenant_name')
+        auth_url = get_arg_or_env_var(args, 'auth_url')
+        if username and password and project_name and auth_url:
+            keystone = keystone_client.Client(
+                username=username,
+                password=password,
+                project_name=project_name,
+                auth_url=auth_url
+            )
+            if not keystone.authenticate():
+                raise ValueError("Keystone authentication failed")
+            args.token = keystone.auth_ref['token']['id']
 
     client = ReportingClient(**vars(args))
 
