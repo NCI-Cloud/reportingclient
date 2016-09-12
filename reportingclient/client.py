@@ -90,13 +90,7 @@ class ReportingClient(object):
         """
         if self.debug:
             print 'Fetching "{}"...'.format(report)
-        try:
-            data = self.fetch(report, **params)
-            if self.debug:
-                print 'Fetched "{}".'.format(report)
-            return data
-        except requests.exceptions.HTTPError as ex:
-            if ex.response.status_code == 401 and not self.token:
-                # it's easy to forget to set OS_TOKEN
-                print >> sys.stderr, 'Hint: maybe you need to set OS_TOKEN.'
-            raise
+        data = self.fetch(report, **params)
+        if self.debug:
+            print 'Fetched "{}".'.format(report)
+        return data
