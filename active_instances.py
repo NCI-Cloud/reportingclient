@@ -6,6 +6,7 @@ import os
 import argparse
 from reportingclient.client import ReportingClient
 from keystoneclient import client as keystone_client
+import logging
 
 
 def get_arg_or_env_var(args, name):
@@ -27,6 +28,7 @@ def get_arg_or_env_var(args, name):
 
 
 def active_instances_csv(client, args):
+    logger = logging.getLogger(__name__)
     # grab all the required data
     hypervisor = client.fetch('hypervisor')
     instance = client.fetch('instance', active=1)
@@ -36,10 +38,9 @@ def active_instances_csv(client, args):
     # (since that's what we'll be using to determine AZ for each instance)
     for h in hypervisor:
         if not h['availability_zone']:
-            print >> sys.stderr, 'Error: no availability_zone for hypervisor {}'.format(h['id'])
+            logger.error('No availability_zone for hypervisor %s', h['id'])
             sys.exit(1)
-    if args.debug:
-        print('Checked hypervisor AZ values.')
+    logger.debug('Checked hypervisor AZ values.')
 
     # hypervisor 'hostname' field is fully qualified but instance 'hypervisor'
     # field is sometimes not; make a lookup table of hypervisors
@@ -48,8 +49,10 @@ def active_instances_csv(client, args):
     for h in hypervisor:
         short_name = h['hostname'].split('.')[0]
         if short_name in hyp_short:
-            print >> sys.stderr, 'Warning: duplicate short hypervisor names {} ({} and {}).'.format(
-                short_name, hyp_short[short_name]['id'], h['id'])
+            logger.warn(
+                'Duplicate short hypervisor names %s (%s and %s).',
+                short_name, hyp_short[short_name]['id'], h['id']
+            )
             if h['last_seen'] < hyp_short[short_name]['last_seen']:
                 # only care about the most recently seen hypervisor
                 continue
@@ -61,20 +64,19 @@ def active_instances_csv(client, args):
     instance_by_id = {}  # maps instance id to instance object
     for i in instance:
         if i['hypervisor'] is None:
-            print >> sys.stderr, 'Warning: instance {} has no hypervisor; it will be ignored.'.format(i['id'])
+            logger.warn('Instance %s has no hypervisor; it will be ignored.', i['id'])
             continue
         short_name = i['hypervisor'].split('.')[0]
         if short_name not in hyp_short:
-            print >> sys.stderr, 'Error: could not determine hypervisor for instance {}'.format(i['id'])
+            logger.error('Could not determine hypervisor for instance %s', i['id'])
             sys.exit(1)
         if i['project_id'] not in project_by_id:
-            print >> sys.stderr, 'Warning: instance {} has invalid project_id {}; it will be ignored.'.format(i['id'], i['project_id'])
+            logger.warn('Instance %s has invalid project_id %s; it will be ignored.', i['id'], i['project_id'])
             continue
 
         instance_hypervisor[i['id']] = hyp_short[short_name]
         instance_by_id[i['id']] = i
-    if args.debug:
-        print 'Checked instance hypervisor values.'
+    logger.debug('Checked instance hypervisor values.')
 
     # at this point, sanity checks have been done on all the data;
     # now join data, decorating instance objects with additional fields
@@ -116,6 +118,15 @@ if __name__ == '__main__':
     parser.add_argument('--os-tenant-name', default=argparse.SUPPRESS, help='Project name to scope to')
     args = parser.parse_args()
 
+    if args.debug:
+        log_level = logging.DEBUG
+    else:
+        log_level = logging.WARN
+    logging.basicConfig(level=log_level)
+    logger = logging.getLogger('reportingclient.client')
+    logger.setLevel(log_level)
+    vars(args).pop('debug', None)
+
     args.token = get_arg_or_env_var(args, 'token')
     if args.token is None:
         # Attempt to obtain authentication credentials
@@ -138,5 +149,5 @@ if __name__ == '__main__':
 
     client = ReportingClient(**vars(args))
 
-    # sys.exit(test_api(client))
-    sys.exit(active_instances_csv(client, args))
+    sys.exit(test_api(client))
+    # sys.exit(active_instances_csv(client, args))

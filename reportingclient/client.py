@@ -1,15 +1,16 @@
 import sys
 import requests
 from urllib import urlencode
+import logging
 
 
 class ReportingClient(object):
 
-    def __init__(self, endpoint, token=None, cache=False, debug=False, output=sys.stdout):
+    def __init__(self, endpoint, token=None, cache=False, output=sys.stdout):
+        self.logger = logging.getLogger(__name__)
         self.token = token
         self.endpoint = endpoint
         self.cache = cache
-        self.debug = debug
         self.versions = None
         self.reports = None
 
@@ -59,9 +60,7 @@ class ReportingClient(object):
         """
         Fetch the named report, optionally passing the given parameters to it.
         """
-        if self.debug:
-            print 'Fetching "{}"...'.format(report)
+        self.logger.debug('Fetching "%s"...', report)
         data = self._request(self.get_report_url(report), **params)
-        if self.debug:
-            print 'Fetched "{}".'.format(report)
+        self.logger.debug('Fetched "%s".', report)
         return data
