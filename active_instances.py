@@ -27,7 +27,7 @@ def get_arg_or_env_var(args, name):
     return value
 
 
-def active_instances_csv(client, args):
+def active_instances_csv(client, outfile_name):
     logger = logging.getLogger(__name__)
     # grab all the required data
     hypervisor = client.fetch('hypervisor')
@@ -92,12 +92,15 @@ def active_instances_csv(client, args):
         i['project_display_name'] = project_by_id[i['project_id']]['display_name']
 
     # output csv
-    with open(args.output, 'w') as csvfile:
-        fieldnames = i.keys()  # reusing 'i' (whatever instance was last processed above)
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        writer.writeheader()
-        for (iid, i) in instance_by_id.items():
-            writer.writerow(i)
+    if outfile_name:
+        outfile = open(outfile_name, 'w')
+    else:
+        outfile = sys.stdout
+    fieldnames = i.keys()  # reusing 'i' (whatever instance was last processed above)
+    writer = csv.DictWriter(outfile, fieldnames=fieldnames)
+    writer.writeheader()
+    for (iid, i) in instance_by_id.items():
+        writer.writerow(i)
 
 def test_api(client):
     print(client.fetch('aggregate'))
@@ -109,7 +112,6 @@ if __name__ == '__main__':
     parser.add_argument('--endpoint', required=True, help='reporting-api endpoint')
     parser.add_argument('--output', required=True, help='output path')
     parser.add_argument('--token', default=argparse.SUPPRESS, help='auth token for reporting-api')
-    parser.add_argument('--cache', default=False, action='store_true', help='cache results (for development)')
     parser.add_argument('--debug', default=False, action='store_true', help='enable debug output (for development)')
     parser.add_argument('--os-username', default=argparse.SUPPRESS, help='Username')
     parser.add_argument('--os-password', default=argparse.SUPPRESS, help="User's password")
@@ -126,6 +128,8 @@ if __name__ == '__main__':
     logger = logging.getLogger('reportingclient.client')
     logger.setLevel(log_level)
     vars(args).pop('debug', None)
+
+    outfile = vars(args).pop('output', None)
 
     args.token = get_arg_or_env_var(args, 'token')
     if args.token is None:
@@ -149,5 +153,5 @@ if __name__ == '__main__':
 
     client = ReportingClient(**vars(args))
 
-    sys.exit(test_api(client))
-    # sys.exit(active_instances_csv(client, args))
+    # sys.exit(test_api(client))
+    sys.exit(active_instances_csv(client, outfile))
