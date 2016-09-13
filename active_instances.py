@@ -1,12 +1,12 @@
 #!/usr/bin/python
 
-import csv
 import sys
 import os
 import argparse
 from reportingclient.client import ReportingClient
 from keystoneclient import client as keystone_client
 import logging
+from csv_utf8 import CSVUTF8DictIterWriter
 
 
 def get_arg_or_env_var(args, name):
@@ -27,24 +27,7 @@ def get_arg_or_env_var(args, name):
     return value
 
 
-def dict_iter_to_csv(dict_iter, outfile_name):
-    # output csv
-    if outfile_name:
-        outfile = open(outfile_name, 'w')
-    else:
-        outfile = sys.stdout
-    row_dict = dict_iter.next()
-    fieldnames = row_dict.keys()
-    writer = csv.DictWriter(outfile, fieldnames=fieldnames)
-    writer.writeheader()
-    writer.writerow(row_dict)
-    for row_dict in dict_iter:
-        writer.writerow(row_dict)
-    if outfile is not sys.stdout:
-        outfile.close()
-
-
-def active_instances_csv(client, outfile_name):
+def active_instances(client):
     logger = logging.getLogger(__name__)
     # grab all the required data
     hypervisor = client.fetch('hypervisor')
@@ -108,11 +91,20 @@ def active_instances_csv(client, outfile_name):
         # add project display names
         i['project_display_name'] = project_by_id[i['project_id']]['display_name']
 
-    dict_iter_to_csv((instance for instance in instance_by_id.values()), outfile_name)
+    return (instance for instance in instance_by_id.values())
 
-def test_api(client, outfile_name):
-    data = client.fetch('aggregate')
-    dict_iter_to_csv((row for row in data), outfile_name)
+
+def test_one_report(client, report_name, outfile_name):
+    result_iter = (row for row in client.fetch(report_name))
+    CSVUTF8DictIterWriter.write_file(result_iter, outfile_name)
+
+def test_all_reports(client, outfile_name):
+    for report_name in (report['name'] for report in client.get_reports()):
+        test_one_report(client, report_name, outfile_name)
+
+def test_active_instances(client, outfile_name):
+    result_iter = active_instances(client)
+    CSVUTF8DictIterWriter.write_file(result_iter, outfile_name)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -138,7 +130,7 @@ if __name__ == '__main__':
     logger.setLevel(log_level)
     vars(args).pop('debug', None)
 
-    outfile = vars(args).pop('output', None)
+    outfile_name = vars(args).pop('output', None)
 
     args.token = get_arg_or_env_var(args, 'token')
     if args.token is None:
@@ -161,6 +153,7 @@ if __name__ == '__main__':
             args.token = keystone.auth_ref['token']['id']
 
     client = ReportingClient(**vars(args))
+    test_all_reports(client, outfile_name)
+    test_active_instances(client, outfile_name)
 
-    # sys.exit(test_api(client, outfile))
-    sys.exit(active_instances_csv(client, outfile))
+    sys.exit(0)
