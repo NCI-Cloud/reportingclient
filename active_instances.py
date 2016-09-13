@@ -1,15 +1,27 @@
 #!/usr/bin/python
 
+"""
+Output various reports downloaded from the Reporting API
+in Comma-Separated Values format.
+"""
+
 import sys
 import os
 import argparse
-from reportingclient.client import ReportingClient
-from keystoneclient import client as keystone_client
 import logging
+from keystoneclient import client as keystone_client
 from csv_utf8 import CSVUTF8DictIterWriter
+from reportingclient.client import ReportingClient
 
 
 def get_arg_or_env_var(args, name):
+    """
+    Retrieve a named parameter's value, either from a command-line argument
+    or from an environment variable.
+    Both the arguments and variables follow the OpenStack naming scheme.
+    If the parameter was found, delete it from wherever it was found.
+    If it was not found, return None.
+    """
     name = 'os-' + name
     try:
         name_with_hyphens = name.replace('_', '-').lower()
@@ -28,17 +40,22 @@ def get_arg_or_env_var(args, name):
 
 
 def active_instances(client):
+    """
+    Return a data structure describing active cloud instances.
+    """
     logger = logging.getLogger(__name__)
     # grab all the required data
-    hypervisor = client.fetch('hypervisor')
-    instance = client.fetch('instance', active=1)
-    project = client.fetch('project')
+    hypervisors = client.fetch('hypervisor')
+    instances = client.fetch('instance', active=1)
+    projects = client.fetch('project')
 
     # check that every hypervisor has availability_zone defined
     # (since that's what we'll be using to determine AZ for each instance)
-    for h in hypervisor:
-        if not h['availability_zone']:
-            logger.error('No availability_zone for hypervisor %s', h['id'])
+    for hypervisor in hypervisors:
+        if not hypervisor['availability_zone']:
+            logger.error(
+                'No availability_zone for hypervisor %s', hypervisor['id']
+            )
             sys.exit(1)
     logger.debug('Checked hypervisor AZ values.')
 
@@ -46,79 +63,132 @@ def active_instances(client):
     # field is sometimes not; make a lookup table of hypervisors
     # by "short" (non-fully-qualified) names
     hyp_short = {}
-    for h in hypervisor:
-        short_name = h['hostname'].split('.')[0]
+    for hypervisor in hypervisors:
+        short_name = hypervisor['hostname'].split('.')[0]
         if short_name in hyp_short:
             logger.warn(
                 'Duplicate short hypervisor names %s (%s and %s).',
-                short_name, hyp_short[short_name]['id'], h['id']
+                short_name, hyp_short[short_name]['id'], hypervisor['id']
             )
-            if h['last_seen'] < hyp_short[short_name]['last_seen']:
+            if hypervisor['last_seen'] < hyp_short[short_name]['last_seen']:
                 # only care about the most recently seen hypervisor
                 continue
-        hyp_short[short_name] = h
+        hyp_short[short_name] = hypervisor
 
     # check that every instance has a valid hypervisor and project_id defined
-    project_by_id = {p['id']: p for p in project}
+    project_by_id = {project['id']: project for project in projects}
     instance_hypervisor = {}  # maps instance id to hypervisor object
     instance_by_id = {}  # maps instance id to instance object
-    for i in instance:
-        if i['hypervisor'] is None:
-            logger.warn('Instance %s has no hypervisor; it will be ignored.', i['id'])
+    for instance in instances:
+        if instance['hypervisor'] is None:
+            logger.warn(
+                'Instance %s has no hypervisor; it will be ignored.',
+                instance['id']
+            )
             continue
-        short_name = i['hypervisor'].split('.')[0]
+        short_name = instance['hypervisor'].split('.')[0]
         if short_name not in hyp_short:
-            logger.error('Could not determine hypervisor for instance %s', i['id'])
+            logger.error(
+                'Could not determine hypervisor for instance %s',
+                instance['id']
+            )
             sys.exit(1)
-        if i['project_id'] not in project_by_id:
-            logger.warn('Instance %s has invalid project_id %s; it will be ignored.', i['id'], i['project_id'])
+        if instance['project_id'] not in project_by_id:
+            logger.warn(
+                'Instance %s has invalid project_id %s; it will be ignored.',
+                instance['id'], instance['project_id']
+            )
             continue
 
-        instance_hypervisor[i['id']] = hyp_short[short_name]
-        instance_by_id[i['id']] = i
+        instance_hypervisor[instance['id']] = hyp_short[short_name]
+        instance_by_id[instance['id']] = instance
     logger.debug('Checked instance hypervisor values.')
 
     # at this point, sanity checks have been done on all the data;
     # now join data, decorating instance objects with additional fields
-    for iid in instance_hypervisor:
-        i = instance_by_id[iid]
+    for instance_id in instance_hypervisor:
+        instance = instance_by_id[instance_id]
 
         # replace availability_zone value with hypervisor's
-        old_az = i['availability_zone']  # current version of reporting-pollster sets this unreliably
-        new_az = instance_hypervisor[iid]['availability_zone']  # this is more reliable
-        i['availability_zone'] = new_az
+        # current version of reporting-pollster sets this unreliably
+        # old_az = instance['availability_zone']
+        # this is more reliable
+        new_az = instance_hypervisor[instance_id]['availability_zone']
+        instance['availability_zone'] = new_az
 
         # add project display names
-        i['project_display_name'] = project_by_id[i['project_id']]['display_name']
+        instance['project_display_name'] = project_by_id[
+            instance['project_id']
+        ]['display_name']
 
     return (instance for instance in instance_by_id.values())
 
 
 def test_one_report(client, report_name, outfile_name):
+    """
+    Output the given-named report to the given-named
+    Comma Separated Values-format file.
+    """
     result_iter = (row for row in client.fetch(report_name))
     CSVUTF8DictIterWriter.write_file(result_iter, outfile_name)
 
+
 def test_all_reports(client, outfile_name):
+    """
+    Output each available report in sequence to the given-named
+    Comma Separated Values-format file, overwriting the file each time.
+    """
     for report_name in (report['name'] for report in client.get_reports()):
         test_one_report(client, report_name, outfile_name)
 
+
 def test_active_instances(client, outfile_name):
+    """
+    Output information about active instances to the given-named
+    Comma Separated Values-format file.
+    """
     result_iter = active_instances(client)
     CSVUTF8DictIterWriter.write_file(result_iter, outfile_name)
 
-if __name__ == '__main__':
+
+def main():
+    """
+    Test harness for OpenStack Reporting API client
+    """
     parser = argparse.ArgumentParser(
         description='Compile list of all active instances.'
     )
-    parser.add_argument('--endpoint', required=True, help='reporting-api endpoint')
-    parser.add_argument('--output', required=False, help='output path')
-    parser.add_argument('--token', default=argparse.SUPPRESS, help='auth token for reporting-api')
-    parser.add_argument('--debug', default=False, action='store_true', help='enable debug output (for development)')
-    parser.add_argument('--os-username', default=argparse.SUPPRESS, help='Username')
-    parser.add_argument('--os-password', default=argparse.SUPPRESS, help="User's password")
-    parser.add_argument('--os-auth-url', default=argparse.SUPPRESS, help='Authentication URL')
-    parser.add_argument('--os-project-name', default=argparse.SUPPRESS, help='Project name to scope to')
-    parser.add_argument('--os-tenant-name', default=argparse.SUPPRESS, help='Project name to scope to')
+    parser.add_argument(
+        '--endpoint', required=True, help='reporting-api endpoint'
+    )
+    parser.add_argument(
+        '--output', required=False, help='output path'
+    )
+    parser.add_argument(
+        '--token', default=argparse.SUPPRESS,
+        help='auth token for reporting-api'
+    )
+    parser.add_argument(
+        '--debug', default=False, action='store_true',
+        help='enable debug output (for development)'
+    )
+    parser.add_argument(
+        '--os-username', default=argparse.SUPPRESS, help='Username'
+    )
+    parser.add_argument(
+        '--os-password', default=argparse.SUPPRESS, help="User's password"
+    )
+    parser.add_argument(
+        '--os-auth-url', default=argparse.SUPPRESS, help='Authentication URL'
+    )
+    parser.add_argument(
+        '--os-project-name', default=argparse.SUPPRESS,
+        help='Project name to scope to'
+    )
+    parser.add_argument(
+        '--os-tenant-name', default=argparse.SUPPRESS,
+        help='Project name to scope to'
+    )
     args = parser.parse_args()
 
     if args.debug:
@@ -153,7 +223,11 @@ if __name__ == '__main__':
             args.token = keystone.auth_ref['token']['id']
 
     client = ReportingClient(**vars(args))
+    # test_one_report(client, 'image', outfile_name)
     test_all_reports(client, outfile_name)
     test_active_instances(client, outfile_name)
 
-    sys.exit(0)
+    return 0
+
+if __name__ == '__main__':
+    sys.exit(main())
