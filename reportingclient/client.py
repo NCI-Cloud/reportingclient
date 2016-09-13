@@ -1,4 +1,3 @@
-import sys
 import requests
 from urllib import urlencode
 import logging
@@ -6,11 +5,10 @@ import logging
 
 class ReportingClient(object):
 
-    def __init__(self, endpoint, token=None, cache=False, output=sys.stdout):
+    def __init__(self, endpoint, token=None):
         self.logger = logging.getLogger(__name__)
         self.token = token
         self.endpoint = endpoint
-        self.cache = cache
         self.versions = None
         self.reports = None
 
