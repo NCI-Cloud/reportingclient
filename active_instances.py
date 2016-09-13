@@ -27,6 +27,23 @@ def get_arg_or_env_var(args, name):
     return value
 
 
+def dict_iter_to_csv(dict_iter, outfile_name):
+    # output csv
+    if outfile_name:
+        outfile = open(outfile_name, 'w')
+    else:
+        outfile = sys.stdout
+    row_dict = dict_iter.next()
+    fieldnames = row_dict.keys()
+    writer = csv.DictWriter(outfile, fieldnames=fieldnames)
+    writer.writeheader()
+    writer.writerow(row_dict)
+    for row_dict in dict_iter:
+        writer.writerow(row_dict)
+    if outfile is not sys.stdout:
+        outfile.close()
+
+
 def active_instances_csv(client, outfile_name):
     logger = logging.getLogger(__name__)
     # grab all the required data
@@ -91,26 +108,18 @@ def active_instances_csv(client, outfile_name):
         # add project display names
         i['project_display_name'] = project_by_id[i['project_id']]['display_name']
 
-    # output csv
-    if outfile_name:
-        outfile = open(outfile_name, 'w')
-    else:
-        outfile = sys.stdout
-    fieldnames = i.keys()  # reusing 'i' (whatever instance was last processed above)
-    writer = csv.DictWriter(outfile, fieldnames=fieldnames)
-    writer.writeheader()
-    for (iid, i) in instance_by_id.items():
-        writer.writerow(i)
+    dict_iter_to_csv((instance for instance in instance_by_id.values()), outfile_name)
 
-def test_api(client):
-    print(client.fetch('aggregate'))
+def test_api(client, outfile_name):
+    data = client.fetch('aggregate')
+    dict_iter_to_csv((row for row in data), outfile_name)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Compile list of all active instances.'
     )
     parser.add_argument('--endpoint', required=True, help='reporting-api endpoint')
-    parser.add_argument('--output', required=True, help='output path')
+    parser.add_argument('--output', required=False, help='output path')
     parser.add_argument('--token', default=argparse.SUPPRESS, help='auth token for reporting-api')
     parser.add_argument('--debug', default=False, action='store_true', help='enable debug output (for development)')
     parser.add_argument('--os-username', default=argparse.SUPPRESS, help='Username')
@@ -153,5 +162,5 @@ if __name__ == '__main__':
 
     client = ReportingClient(**vars(args))
 
-    # sys.exit(test_api(client))
+    # sys.exit(test_api(client, outfile))
     sys.exit(active_instances_csv(client, outfile))
