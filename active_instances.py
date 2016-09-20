@@ -9,8 +9,8 @@ import sys
 import os
 import argparse
 import logging
+from pprint import pprint
 from keystoneclient import client as keystone_client
-from csv_utf8 import CSVUTF8DictIterWriter
 from reportingclient.client import ReportingClient
 
 
@@ -124,31 +124,31 @@ def active_instances(client):
     return (instance for instance in instance_by_id.values())
 
 
-def test_one_report(client, report_name, outfile_name):
+def test_one_report(client, report_name):
     """
     Output the given-named report to the given-named
     Comma Separated Values-format file.
     """
-    result_iter = (row for row in client.fetch(report_name))
-    CSVUTF8DictIterWriter.write_file(result_iter, outfile_name)
+    for result in client.fetch(report_name):
+        pprint(result)
 
 
-def test_all_reports(client, outfile_name):
+def test_all_reports(client):
     """
     Output each available report in sequence to the given-named
     Comma Separated Values-format file, overwriting the file each time.
     """
     for report_name in (report['name'] for report in client.get_reports()):
-        test_one_report(client, report_name, outfile_name)
+        test_one_report(client, report_name)
 
 
-def test_active_instances(client, outfile_name):
+def test_active_instances(client):
     """
     Output information about active instances to the given-named
     Comma Separated Values-format file.
     """
-    result_iter = active_instances(client)
-    CSVUTF8DictIterWriter.write_file(result_iter, outfile_name)
+    for result in active_instances(client):
+        pprint(result)
 
 
 def main():
@@ -160,9 +160,6 @@ def main():
     )
     parser.add_argument(
         '--endpoint', required=True, help='reporting-api endpoint'
-    )
-    parser.add_argument(
-        '--output', required=False, help='output path'
     )
     parser.add_argument(
         '--token', default=argparse.SUPPRESS,
@@ -200,8 +197,6 @@ def main():
     logger.setLevel(log_level)
     vars(args).pop('debug', None)
 
-    outfile_name = vars(args).pop('output', None)
-
     args.token = get_arg_or_env_var(args, 'token')
     if args.token is None:
         # Attempt to obtain authentication credentials
@@ -224,8 +219,8 @@ def main():
 
     client = ReportingClient(**vars(args))
     # test_one_report(client, 'image', outfile_name)
-    test_all_reports(client, outfile_name)
-    test_active_instances(client, outfile_name)
+    test_all_reports(client)
+    test_active_instances(client)
 
     return 0
 
