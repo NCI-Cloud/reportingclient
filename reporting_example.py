@@ -133,6 +133,17 @@ def test_one_report(client, report_name):
         pprint(result)
 
 
+def test_filtering(client, report_name, **params):
+    """
+    Output the given-named report to the given-named
+    Comma Separated Values-format file, passing the given parameters
+    to the report, which will be treated as filter criteria
+    and ANDed together.
+    """
+    for result in client.fetch(report_name, **params):
+        pprint(result)
+
+
 def test_all_reports(client):
     """
     Output each available report in sequence to the given-named
@@ -219,6 +230,7 @@ def main():
 
     client = ReportingClient(**vars(args))
     # test_one_report(client, 'image', outfile_name)
+    test_filtering(client, 'flavour', name='m1.small')
     test_all_reports(client)
     test_active_instances(client)
 
