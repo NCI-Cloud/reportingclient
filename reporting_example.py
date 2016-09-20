@@ -19,20 +19,17 @@ def get_arg_or_env_var(args, name):
     Retrieve a named parameter's value, either from a command-line argument
     or from an environment variable.
     Both the arguments and variables follow the OpenStack naming scheme.
-    If the parameter was found, delete it from wherever it was found.
-    If it was not found, return None.
+    If no parameter with the given name is found, return None.
     """
     name = 'os-' + name
     try:
         name_with_hyphens = name.replace('_', '-').lower()
         value = getattr(args, name_with_hyphens)
-        args.pop(name_with_hyphens, None)
     except AttributeError:
         # Not supplied in a command-line argument
         name_with_underscores = name.replace('-', '_').upper()
         try:
             value = os.environ[name_with_underscores]
-            del os.environ[name_with_underscores]
         except KeyError:
             # Not supplied in environment either
             value = None
@@ -205,9 +202,7 @@ def main():
     logging.basicConfig(level=log_level)
     logger = logging.getLogger('reportingclient.client')
     logger.setLevel(log_level)
-    vars(args).pop('debug', None)
     filter_criteria = dict(criterion.split('=') for criterion in args.filter)
-    vars(args).pop('filter', None)
 
     args.token = get_arg_or_env_var(args, 'token')
     if args.token is None:
