@@ -16,7 +16,7 @@ class ReportingClient(object):
     # This constructor does indeed have many arguments, but they are all
     # optional, because one of several possible subsets of them is required.
     # But there seems to be no way to make PyLint understand either of these
-    # two facts. So such silence it.
+    # two facts. So just silence it.
     # pylint: disable=too-many-arguments
     def __init__(self, endpoint=None, token=None,
                  username=None, password=None,
