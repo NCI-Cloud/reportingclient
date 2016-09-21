@@ -13,24 +13,47 @@ class ReportingClient(object):
     Encapsulates the Reporting API and provides access to its reports.
     """
 
-    def __init__(self, endpoint, token=None,
+    # This constructor does indeed have many arguments, but they are all
+    # optional, because one of several possible subsets of them is required.
+    # But there seems to be no way to make PyLint understand either of these
+    # two facts. So just silence it.
+    # pylint: disable=too-many-arguments
+    def __init__(self, endpoint=None, token=None,
                  username=None, password=None,
                  project_name=None, auth_url=None):
         self.logger = logging.getLogger(__name__)
-        self.token = token
-        self.endpoint = endpoint
         self.versions = None
         self.reports = None
-        if not token and username and password and project_name and auth_url:
+        if token and auth_url:
+            self.token = token
+            keystone = keystone_client.Client(token=token, auth_url=auth_url)
+        elif username and password and project_name and auth_url:
             keystone = keystone_client.Client(
                 username=username,
                 password=password,
                 project_name=project_name,
                 auth_url=auth_url
             )
+        else:
+            keystone = None
+        if keystone:
             if not keystone.authenticate():
                 raise ValueError("Keystone authentication failed")
             self.token = keystone.auth_ref['token']['id']
+        if endpoint:
+            self.endpoint = endpoint
+        elif keystone:
+            self.endpoint = keystone.service_catalog.url_for(
+                service_type='reporting',
+                endpoint_type='public'
+            )
+        else:
+            raise ValueError(
+                "No endpoint URL supplied, "
+                "and neither token nor credentials supplied, "
+                "so no way to obtain endpoint URL from catalog"
+            )
+    # pylint: enable=too-many-arguments
 
     def _request(self, url, **params):
         """

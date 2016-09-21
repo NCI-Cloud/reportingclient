@@ -5,6 +5,7 @@ Output various reports downloaded from the Reporting API
 in Comma-Separated Values format.
 """
 
+from __future__ import print_function
 import sys
 import os
 import argparse
@@ -20,15 +21,14 @@ def get_arg_or_env_var(args, name):
     Both the arguments and variables follow the OpenStack naming scheme.
     If no parameter with the given name is found, return None.
     """
-    name = 'os-' + name
+    name = 'os_' + name
+    name_with_underscores = name.replace('-', '_')
     try:
-        name_with_hyphens = name.replace('_', '-').lower()
-        value = getattr(args, name_with_hyphens)
+        value = getattr(args, name_with_underscores.lower())
     except AttributeError:
         # Not supplied in a command-line argument
-        name_with_underscores = name.replace('-', '_').upper()
         try:
-            value = os.environ[name_with_underscores]
+            value = os.environ[name_with_underscores.upper()]
         except KeyError:
             # Not supplied in environment either
             value = None
@@ -152,10 +152,11 @@ def main():
         description='Compile list of all active instances.'
     )
     parser.add_argument(
-        '--endpoint', required=True, help='reporting-api endpoint'
+        '--endpoint', required=False, default=None,
+        help='reporting-api endpoint'
     )
     parser.add_argument(
-        '--token', default=argparse.SUPPRESS,
+        '--os-token', default=argparse.SUPPRESS,
         help='auth token for reporting-api'
     )
     parser.add_argument(
@@ -204,22 +205,19 @@ def main():
     logger.setLevel(log_level)
     filter_criteria = dict(criterion.split('=') for criterion in args.filter)
 
-    args.token = get_arg_or_env_var(args, 'token')
-    if args.token is None:
-        # Attempt to obtain authentication credentials
-        username = get_arg_or_env_var(args, 'username')
-        password = get_arg_or_env_var(args, 'password')
-        project_name = get_arg_or_env_var(args, 'project_name')
-        if not project_name:
-            project_name = get_arg_or_env_var(args, 'tenant_name')
-        auth_url = get_arg_or_env_var(args, 'auth_url')
-        client = ReportingClient(args.endpoint,
-                                 username=username,
-                                 password=password,
-                                 project_name=project_name,
-                                 auth_url=auth_url)
-    else:
-        client = ReportingClient(args.endpoint, args.token)
+    token = get_arg_or_env_var(args, 'token')
+    auth_url = get_arg_or_env_var(args, 'auth_url')
+    username = get_arg_or_env_var(args, 'username')
+    password = get_arg_or_env_var(args, 'password')
+    project_name = get_arg_or_env_var(args, 'project_name')
+    if not project_name:
+        project_name = get_arg_or_env_var(args, 'tenant_name')
+    client = ReportingClient(endpoint=args.endpoint,
+                             username=username,
+                             password=password,
+                             project_name=project_name,
+                             auth_url=auth_url,
+                             token=token)
     if args.list_reports:
         reports = client.get_reports()
         for report in reports:
