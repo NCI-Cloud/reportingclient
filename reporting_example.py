@@ -151,7 +151,8 @@ def main():
         description='Compile list of all active instances.'
     )
     parser.add_argument(
-        '--endpoint', required=True, help='reporting-api endpoint'
+        '--endpoint', required=False, default=None,
+        help='reporting-api endpoint'
     )
     parser.add_argument(
         '--os-token', default=argparse.SUPPRESS,

@@ -29,15 +29,25 @@ class ReportingClient(object):
                 project_name=project_name,
                 auth_url=auth_url
             )
+        else:
+            keystone = None
+        if keystone:
             if not keystone.authenticate():
                 raise ValueError("Keystone authentication failed")
             self.token = keystone.auth_ref['token']['id']
-        else:
-            raise ValueError("Neither token nor credentials supplied")
         if endpoint:
             self.endpoint = endpoint
+        elif keystone:
+            self.endpoint = keystone.service_catalog.url_for(
+                service_type='reporting',
+                endpoint_type='public'
+            )
         else:
-            self.endpoint = keystone.c
+            raise ValueError(
+                "No endpoint URL supplied, "
+                "and neither token nor credentials supplied, "
+                "so no way to obtain endpoint URL from catalog"
+            )
 
     def _request(self, url, **params):
         """
