@@ -13,15 +13,16 @@ class ReportingClient(object):
     Encapsulates the Reporting API and provides access to its reports.
     """
 
-    def __init__(self, endpoint, token=None,
+    def __init__(self, endpoint=None, token=None,
                  username=None, password=None,
                  project_name=None, auth_url=None):
         self.logger = logging.getLogger(__name__)
-        self.token = token
-        self.endpoint = endpoint
         self.versions = None
         self.reports = None
-        if not token and username and password and project_name and auth_url:
+        if token and auth_url:
+            self.token = token
+            keystone = keystone_client.Client(token=token, auth_url=auth_url)
+        elif username and password and project_name and auth_url:
             keystone = keystone_client.Client(
                 username=username,
                 password=password,
@@ -31,6 +32,12 @@ class ReportingClient(object):
             if not keystone.authenticate():
                 raise ValueError("Keystone authentication failed")
             self.token = keystone.auth_ref['token']['id']
+        else:
+            raise ValueError("Neither token nor credentials supplied")
+        if endpoint:
+            self.endpoint = endpoint
+        else:
+            self.endpoint = keystone.c
 
     def _request(self, url, **params):
         """
