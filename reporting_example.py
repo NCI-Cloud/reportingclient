@@ -10,7 +10,6 @@ import os
 import argparse
 import logging
 from pprint import pprint
-from keystoneclient import client as keystone_client
 from reportingclient.client import ReportingClient
 
 
@@ -190,6 +189,10 @@ def main():
         '--report', default=None,
         help='Report name'
     )
+    parser.add_argument(
+        '--list-reports', action='store_true', default=False,
+        help="List available reports",
+    )
     args = parser.parse_args()
 
     if args.debug:
@@ -210,19 +213,19 @@ def main():
         if not project_name:
             project_name = get_arg_or_env_var(args, 'tenant_name')
         auth_url = get_arg_or_env_var(args, 'auth_url')
-        if username and password and project_name and auth_url:
-            keystone = keystone_client.Client(
-                username=username,
-                password=password,
-                project_name=project_name,
-                auth_url=auth_url
-            )
-            if not keystone.authenticate():
-                raise ValueError("Keystone authentication failed")
-            args.token = keystone.auth_ref['token']['id']
-
-    client = ReportingClient(args.endpoint, args.token)
-    if args.report:
+        client = ReportingClient(args.endpoint,
+                                 username=username,
+                                 password=password,
+                                 project_name=project_name,
+                                 auth_url=auth_url)
+    else:
+        client = ReportingClient(args.endpoint, args.token)
+    if args.list_reports:
+        reports = client.get_reports()
+        for report in reports:
+            print("%s report: %s" % (report['name'], report['description']))
+            print("\tLast Updated: %s" % (report['lastUpdated']))
+    elif args.report:
         test_one_report(client, args.report, **filter_criteria)
     else:
         test_all_reports(client, **filter_criteria)
