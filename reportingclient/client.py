@@ -13,6 +13,11 @@ class ReportingClient(object):
     Encapsulates the Reporting API and provides access to its reports.
     """
 
+    # This constructor does indeed have many arguments, but they are all
+    # optional, because one of several possible subsets of them is required.
+    # But there seems to be no way to make PyLint understand either of these
+    # two facts. So such silence it.
+    # pylint: disable=too-many-arguments
     def __init__(self, endpoint=None, token=None,
                  username=None, password=None,
                  project_name=None, auth_url=None):
@@ -48,6 +53,7 @@ class ReportingClient(object):
                 "and neither token nor credentials supplied, "
                 "so no way to obtain endpoint URL from catalog"
             )
+    # pylint: enable=too-many-arguments
 
     def _request(self, url, **params):
         """
