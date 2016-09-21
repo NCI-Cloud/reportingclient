@@ -5,24 +5,29 @@ Client for [reporting-api](https://github.com/NeCTAR-RC/reporting-api).
 
 Requirements:
 
-* Python 3
+* Python 2.7
 * [Requests](http://python-requests.org) Python library
+* [Python Keystone client](https://pypi.python.org/pypi/python-keystoneclient)
 
 
-active-instances.py
--------------------
+reportingclient
+---------------
 
-This script uses data for hypervisors, projects, and instances, outputting a
-comma-separated list of values describing all active instances. See
+This package contains a Python client for the reporting API.
 
-`$ ./active-instances.py --help`
+reporting_example.py
+--------------------
 
-for usage information.
+This script is an example of using the Python client library to query
+the reporting API.
+It can either display an (optionally filtered) report, or all reports.
+It also contains an example of custom analytics, using data for hypervisors,
+projects, and instances to generate aggregated data about active instances.
 
-If the `reporting-api` endpoint being used requires authentication, either set
-the `OS_TOKEN` environment variable, or (if you are the kind of person who
-enjoys very lengthy command lines) pass the token via `--token`.  One way to
-get a valid token is from
-[reporting-view](https://github.com/NeCTAR-RC/reporting-view), in which a token
-may be obtained from `sessionStorage.getItem('token')` in the JavaScript
-console of an authenticated browser session.
+For usage information. see:
+
+`$ ./reporting_example.py --help`
+
+If the `reporting-api` endpoint being used requires authentication,
+you must either supply a previously-generated Keystone token, or supply
+the credentials necessary to obtain a new token from Keystone.
