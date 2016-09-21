@@ -5,6 +5,7 @@ Python client binding to the OpenStack Reporting API.
 from urllib import urlencode
 import logging
 import requests
+from keystoneclient import client as keystone_client
 
 
 class ReportingClient(object):
@@ -12,12 +13,24 @@ class ReportingClient(object):
     Encapsulates the Reporting API and provides access to its reports.
     """
 
-    def __init__(self, endpoint, token=None):
+    def __init__(self, endpoint, token=None,
+                 username=None, password=None,
+                 project_name=None, auth_url=None):
         self.logger = logging.getLogger(__name__)
         self.token = token
         self.endpoint = endpoint
         self.versions = None
         self.reports = None
+        if not token and username and password and project_name and auth_url:
+            keystone = keystone_client.Client(
+                username=username,
+                password=password,
+                project_name=project_name,
+                auth_url=auth_url
+            )
+            if not keystone.authenticate():
+                raise ValueError("Keystone authentication failed")
+            self.token = keystone.auth_ref['token']['id']
 
     def _request(self, url, **params):
         """
