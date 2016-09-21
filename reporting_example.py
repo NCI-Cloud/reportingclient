@@ -193,6 +193,10 @@ def main():
         '--report', default=None,
         help='Report name'
     )
+    parser.add_argument(
+        '--list-reports', action='store_true', default=False,
+        help="List available reports",
+    )
     args = parser.parse_args()
 
     if args.debug:
@@ -225,7 +229,12 @@ def main():
             args.token = keystone.auth_ref['token']['id']
 
     client = ReportingClient(args.endpoint, args.token)
-    if args.report:
+    if args.list_reports:
+        reports = client.get_reports()
+        for report in reports:
+            print("%s report: %s" % (report['name'], report['description']))
+            print("\tLast Updated: %s" % (report['lastUpdated']))
+    elif args.report:
         test_one_report(client, args.report, **filter_criteria)
     else:
         test_all_reports(client, **filter_criteria)
