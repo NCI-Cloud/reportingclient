@@ -216,17 +216,6 @@ def main():
         if not project_name:
             project_name = get_arg_or_env_var(args, 'tenant_name')
         auth_url = get_arg_or_env_var(args, 'auth_url')
-#       if username and password and project_name and auth_url:
-#           keystone = keystone_client.Client(
-#               username=username,
-#               password=password,
-#               project_name=project_name,
-#               auth_url=auth_url
-#           )
-#           if not keystone.authenticate():
-#               raise ValueError("Keystone authentication failed")
-#           args.token = keystone.auth_ref['token']['id']
-
         client = ReportingClient(args.endpoint,
                                  username=username,
                                  password=password,
