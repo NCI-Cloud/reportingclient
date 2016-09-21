@@ -19,20 +19,17 @@ def get_arg_or_env_var(args, name):
     Retrieve a named parameter's value, either from a command-line argument
     or from an environment variable.
     Both the arguments and variables follow the OpenStack naming scheme.
-    If the parameter was found, delete it from wherever it was found.
-    If it was not found, return None.
+    If no parameter with the given name is found, return None.
     """
     name = 'os-' + name
     try:
         name_with_hyphens = name.replace('_', '-').lower()
         value = getattr(args, name_with_hyphens)
-        args.pop(name_with_hyphens, None)
     except AttributeError:
         # Not supplied in a command-line argument
         name_with_underscores = name.replace('-', '_').upper()
         try:
             value = os.environ[name_with_underscores]
-            del os.environ[name_with_underscores]
         except KeyError:
             # Not supplied in environment either
             value = None
@@ -124,22 +121,22 @@ def active_instances(client):
     return (instance for instance in instance_by_id.values())
 
 
-def test_one_report(client, report_name):
+def test_one_report(client, report_name, **params):
     """
     Output the given-named report to the given-named
     Comma Separated Values-format file.
     """
-    for result in client.fetch(report_name):
+    for result in client.fetch(report_name, **params):
         pprint(result)
 
 
-def test_all_reports(client):
+def test_all_reports(client, **params):
     """
     Output each available report in sequence to the given-named
     Comma Separated Values-format file, overwriting the file each time.
     """
     for report_name in (report['name'] for report in client.get_reports()):
-        test_one_report(client, report_name)
+        test_one_report(client, report_name, **params)
 
 
 def test_active_instances(client):
@@ -186,6 +183,16 @@ def main():
         '--os-tenant-name', default=argparse.SUPPRESS,
         help='Project name to scope to'
     )
+    parser.add_argument(
+        '--filter', default=[],
+        action='append',
+        help='Supply a report filter criterion in name=value format.' +
+        'Repeat for multiple critera.'
+    )
+    parser.add_argument(
+        '--report', default=None,
+        help='Report name'
+    )
     args = parser.parse_args()
 
     if args.debug:
@@ -195,7 +202,7 @@ def main():
     logging.basicConfig(level=log_level)
     logger = logging.getLogger('reportingclient.client')
     logger.setLevel(log_level)
-    vars(args).pop('debug', None)
+    filter_criteria = dict(criterion.split('=') for criterion in args.filter)
 
     args.token = get_arg_or_env_var(args, 'token')
     if args.token is None:
@@ -217,10 +224,12 @@ def main():
                 raise ValueError("Keystone authentication failed")
             args.token = keystone.auth_ref['token']['id']
 
-    client = ReportingClient(**vars(args))
-    # test_one_report(client, 'image', outfile_name)
-    test_all_reports(client)
-    test_active_instances(client)
+    client = ReportingClient(args.endpoint, args.token)
+    if args.report:
+        test_one_report(client, args.report, **filter_criteria)
+    else:
+        test_all_reports(client, **filter_criteria)
+        test_active_instances(client)
 
     return 0
 
