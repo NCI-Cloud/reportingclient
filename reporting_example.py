@@ -123,8 +123,7 @@ def active_instances(client):
 
 def test_one_report(client, report_name, **params):
     """
-    Output the given-named report to the given-named
-    Comma Separated Values-format file.
+    Output data from the given-named report.
     """
     for result in client.fetch(report_name, **params):
         pprint(result)
@@ -132,8 +131,7 @@ def test_one_report(client, report_name, **params):
 
 def test_all_reports(client, **params):
     """
-    Output each available report in sequence to the given-named
-    Comma Separated Values-format file, overwriting the file each time.
+    Output data from each available report in sequence.
     """
     for report_name in (report['name'] for report in client.get_reports()):
         test_one_report(client, report_name, **params)
@@ -141,8 +139,7 @@ def test_all_reports(client, **params):
 
 def test_active_instances(client):
     """
-    Output information about active instances to the given-named
-    Comma Separated Values-format file.
+    Output information about active instances.
     """
     for result in active_instances(client):
         pprint(result)
