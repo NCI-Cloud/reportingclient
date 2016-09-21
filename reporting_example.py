@@ -5,6 +5,7 @@ Output various reports downloaded from the Reporting API
 in Comma-Separated Values format.
 """
 
+from __future__ import print_function
 import sys
 import os
 import argparse
