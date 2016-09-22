@@ -1,0 +1,21 @@
+stages:
+    - test
+
+variables:
+    TENJIN_TESTING: "yes"
+
+before_script:
+    - yum install -y epel-release
+    - yum install -y python-pip gcc python-devel
+    - pip install flake8
+    - pip install --upgrade setuptools
+    - flake8 --version
+
+python_flake8:
+    stage: test
+    tags:
+        - python
+    script:
+        - find . -type f -name '*.py' |xargs -r flake8
+        - find . -type f -executable |grep -v '\.git' |xargs grep -l '/usr/bin/env python' |xargs -r flake8
+
