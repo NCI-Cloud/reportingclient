@@ -17,5 +17,5 @@ python_flake8:
         - python
     script:
         - find . -type f -name '*.py' |xargs -r flake8
-        - find . -type f -executable |grep -v '\.git' |xargs grep -l '/usr/bin/env python' |xargs -r flake8
+        - find . -type f -executable -a ! -path './.git/*' -exec grep -q '/usr/bin/env python' '{}' \; -print0 |xargs -0 -r flake8
 
