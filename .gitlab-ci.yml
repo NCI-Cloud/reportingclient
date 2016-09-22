@@ -19,3 +19,9 @@ python_flake8:
         - find . -type f -name '*.py' |xargs -r flake8
         - find . -type f -executable -a ! -path './.git/*' -exec grep -q '/usr/bin/env python' '{}' \; -print0 |xargs -0 -r flake8
 
+python_setup:
+    stage: test
+    tags:
+        - python
+    script:
+        - python ./setup.py test
