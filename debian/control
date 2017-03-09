@@ -1,0 +1,29 @@
+Source: reportingclient
+Section: unknown
+Priority: optional
+Maintainer: Simon Fowler <simon.fowler@anu.edu.au>
+Build-Depends: debhelper (>=9),dh-python,python-all (>= 2.6.6-3~),python-setuptools,python3-all,python3-setuptools,python-pip
+Standards-Version: 3.9.6
+Homepage: https://github.com/NeCTAR-RC/reportingclient
+X-Python-Version: >= 2.6
+X-Python3-Version: >= 3.2
+
+Package: python-reportingclient
+Architecture: all
+Depends: ${python:Depends}, ${misc:Depends}
+Suggests:
+Description: Client library for the NeCTAR reporting API (Python 2)
+ This package contains a client library for the NeCTAR OpenStack
+ reporting API. Also included is a simple command line client.
+ .
+ This package installs the library for Python 2.
+
+Package: python3-reportingclient
+Architecture: all
+Depends: ${python3:Depends}, ${misc:Depends}
+Suggests:
+Description: Client library for the NeCTAR reporting API (Python 3)
+ This package contains a client library for the NeCTAR OpenStack
+ reporting API. Also included is a simple command line client.
+ .
+ This package installs the library for Python 3.
