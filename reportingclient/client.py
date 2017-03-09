@@ -6,6 +6,7 @@ from urllib import urlencode
 import logging
 import requests
 from keystoneclient import client as keystone_client
+from keystoneclient import exceptions
 
 
 class ReportingClient(object):
@@ -43,10 +44,13 @@ class ReportingClient(object):
         if endpoint:
             self.endpoint = endpoint
         elif keystone:
-            self.endpoint = keystone.service_catalog.url_for(
-                service_type='reporting',
-                endpoint_type='public'
-            )
+            try:
+                self.endpoint = keystone.service_catalog.url_for(
+                    service_type='reporting',
+                    endpoint_type='public'
+                )
+            except exceptions.EndpointNotFound:
+                raise ValueError("No reporting endpoint found in the catalog")
         else:
             raise ValueError(
                 "No endpoint URL supplied, "
