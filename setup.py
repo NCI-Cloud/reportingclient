@@ -17,7 +17,7 @@ setup(
     author_email="cloud.team@nci.org.au",
     description="OpenStack Reporting system client library",
     license="Apache 2.0",
-    scripts=['reporting_example.py'],
+    scripts=['reporting_client.py'],
     install_requires=[
         str(r.req) for r in parse_requirements(
             "requirements.txt", session=False
